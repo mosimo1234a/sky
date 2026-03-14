@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRAXON LIVE</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f7f8fc;--white:#fff;--border:#eef0f6;
+  --text:#191f28;--text2:#6b7684;--text3:#b0b8c1;
+  --blue1:#4a90ff;--blue2:#6c63ff;
+  --green1:#00c9a7;--green2:#00a8e8;
+  --purple1:#a78bfa;--purple2:#7c3aed;
+  --orange1:#ff7043;--orange2:#ff9a3c;
+  --r-sm:12px;--r-md:18px;--r-lg:24px;
+  --shadow:0 2px 12px rgba(0,0,0,.07);
+  --font:'Pretendard',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--white);border-right:1px solid var(--border);z-index:400;display:flex;flex-direction:column}
+.nav-brand{padding:28px 22px 18px}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(135deg,var(--blue1),var(--blue2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:3px;font-weight:500}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,201,167,.1);border:1px solid rgba(0,201,167,.25);color:#00a88e;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;margin-top:8px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:#00c9a7;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.nav-items{flex:1;padding:6px 10px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;margin-bottom:2px;transition:all .15s;font-size:13.5px;font-weight:500;color:var(--text2)}
+.nav-item:hover{background:#f3f5ff;color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,rgba(74,144,255,.1),rgba(108,99,255,.1));color:#4a6bff}
+.nav-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:#f3f5f8}
+.nav-item.active .nav-icon{background:linear-gradient(135deg,var(--blue1),var(--blue2));box-shadow:0 3px 10px rgba(74,144,255,.3)}
+.chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;margin-left:auto}
+.chip-live{background:rgba(0,201,167,.12);color:#00a88e}
+.chip-free{background:rgba(74,144,255,.12);color:#4a6bff}
+.nav-footer{padding:10px 12px 18px}
+.api-status{background:#f7f8fc;border-radius:var(--r-sm);padding:12px 14px;border:1px solid var(--border)}
+.api-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:3px 0}
+.api-name{color:var(--text2);font-weight:500}
+.api-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:#00c9a7}
+.dot-loading{background:#f59e0b;animation:blink 1s infinite}
+.dot-err{background:#f03}
+
+/* MAIN */
+main{margin-left:240px;min-height:100vh}
+.page{display:none;height:100vh;flex-direction:column}
+.page.active{display:flex}
+
+/* TOPBAR */
+.topbar{padding:18px 28px 0;flex-shrink:0}
+.tb-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.tb-eyebrow{font-size:11px;font-weight:700;color:#4a6bff;letter-spacing:.5px;margin-bottom:4px}
+.tb-title{font-size:26px;font-weight:800;letter-spacing:-.8px;line-height:1}
+.tb-desc{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.6}
+.tb-right{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:99px;font-size:12px;font-family:var(--font);cursor:pointer;border:none;font-weight:600;transition:all .15s}
+.btn-blue{background:linear-gradient(135deg,var(--blue1),var(--blue2));color:#fff;box-shadow:0 3px 12px rgba(74,144,255,.3)}
+.btn-blue:hover{transform:translateY(-1px)}
+.btn-ghost{background:#f3f5f8;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:#eef0f6}
+
+/* STATS */
+.stats-row{display:flex;gap:12px;padding:14px 28px 0;flex-shrink:0}
+.stat-card{flex:1;background:var(--white);border-radius:var(--r-md);padding:14px 18px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:.08}
+.sc-blue::after{background:var(--blue1)}.sc-green::after{background:var(--green1)}
+.sc-purple::after{background:var(--purple1)}.sc-orange::after{background:var(--orange1)}
+.stat-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.stat-value{font-size:24px;font-weight:800;letter-spacing:-.8px}
+.stat-sub{font-size:11px;color:var(--text2);margin-top:3px;font-weight:500}
+.grad-blue{background:linear-gradient(135deg,var(--blue1),var(--blue2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad-green{background:linear-gradient(135deg,var(--green1),var(--green2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad-purple{background:linear-gradient(135deg,var(--purple1),var(--purple2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad-orange{background:linear-gradient(135deg,var(--orange1),var(--orange2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* MAP */
+.map-wrap{flex:1;margin:14px 28px 20px;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;min-height:0}
+#map-flight,#map-sat,#map-cop{width:100%;height:100%;background:#e8ecf0}
+
+/* SIDE PANEL */
+.side-panel{position:absolute;top:12px;right:12px;width:260px;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-radius:var(--r-md);box-shadow:0 4px 24px rgba(0,0,0,.1);border:1px solid var(--border);z-index:500;max-height:calc(100% - 24px);overflow-y:auto}
+.sp-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.sp-body{padding:10px 14px 14px}
+.sp-item{padding:8px 0;border-bottom:1px solid #f7f8fc;font-size:12px}
+.sp-item:last-child{border:none;padding-bottom:0}
+.sp-title{font-weight:600;color:var(--text);margin-bottom:2px}
+.sp-detail{color:var(--text2);line-height:1.5}
+.sp-badge{display:inline-flex;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:rgba(74,144,255,.1);color:#4a6bff;margin-top:3px}
+
+/* LOADING */
+.loading-overlay{position:absolute;inset:0;background:rgba(247,248,252,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:600;border-radius:var(--r-lg)}
+.spinner{width:36px;height:36px;border:3px solid #eef0f6;border-top-color:#4a90ff;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;font-weight:600;color:var(--text2)}
+.loading-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* SATELLITE PAGE */
+.sat-grid{display:flex;gap:12px;padding:14px 28px 20px;flex:1;min-height:0}
+.sat-map-wrap{flex:2;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;min-height:0}
+.sat-sidebar{width:280px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.sat-card{background:var(--white);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.sat-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f7f8fc;font-size:12px}
+.sat-item:last-child{border:none;padding-bottom:0}
+.sat-icon{width:28px;height:28px;border-radius:8px;background:rgba(167,139,250,.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.s-name{font-weight:600;color:var(--text);margin-bottom:2px}
+.s-detail{color:var(--text2);line-height:1.5}
+
+/* COPERNICUS */
+.cop-wrap{flex:1;margin:14px 28px 20px;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;min-height:0}
+.cop-controls{position:absolute;top:12px;left:12px;z-index:500;display:flex;flex-direction:column;gap:6px}
+.cop-btn{background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);transition:all .15s;font-family:var(--font)}
+.cop-btn.active{border-color:var(--blue1);color:#4a6bff;background:rgba(74,144,255,.08)}
+.cop-info{position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-radius:var(--r-sm);padding:10px 14px;font-size:11px;color:var(--text2);border:1px solid var(--border);z-index:500;max-width:260px;line-height:1.7}
+
+.sec-t{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.4px;margin-bottom:10px;text-transform:uppercase}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* Leaflet overrides */
+.leaflet-container{background:#e8ecf0!important;font-family:var(--font)!important}
+.leaflet-popup-content-wrapper{border-radius:12px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important;font-family:var(--font)!important;font-size:13px!important}
+.leaflet-popup-tip-container{display:none!important}
+.false-color{filter:hue-rotate(180deg) saturate(1.8)}
+
+/* Leaflet 로딩 중 fallback */
+.map-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#f7f8fc}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="logo">TRAXON</div>
+    <div class="logo-sub">실시간 이동체 인텔리전스</div>
+    <div class="live-badge"><span class="live-dot"></span>LIVE DATA</div>
+  </div>
+  <div class="nav-items">
+    <div class="nav-item active" onclick="showPage('flight')" data-page="flight">
+      <div class="nav-icon">✈️</div><span>실시간 항공편</span><span class="chip chip-live">LIVE</span>
+    </div>
+    <div class="nav-item" onclick="showPage('sat')" data-page="sat">
+      <div class="nav-icon">🛰️</div><span>위성 궤도</span><span class="chip chip-free">FREE</span>
+    </div>
+    <div class="nav-item" onclick="showPage('cop')" data-page="cop">
+      <div class="nav-icon">🌍</div><span>위성 이미지</span><span class="chip chip-free">ESA</span>
+    </div>
+  </div>
+  <div class="nav-footer">
+    <div class="sec-t">API 상태</div>
+    <div class="api-status">
+      <div class="api-row"><span class="api-name">OpenSky Network</span><span class="api-dot dot-loading" id="dot-opensky"></span></div>
+      <div class="api-row"><span class="api-name">Celestrak TLE</span><span class="api-dot dot-loading" id="dot-celestrak"></span></div>
+      <div class="api-row"><span class="api-name">ESA / EOX WMTS</span><span class="api-dot dot-ok"></span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- PAGE 1: 항공편 -->
+<div class="page active" id="page-flight">
+  <div class="topbar">
+    <div class="tb-row">
+      <div>
+        <div class="tb-eyebrow">OPENSKY NETWORK API</div>
+        <div class="tb-title">실시간 항공편</div>
+        <div class="tb-desc">전 세계 ADS-B 수신기가 포착한 실제 비행 중인 항공기 위치</div>
+      </div>
+      <div class="tb-right">
+        <button class="btn btn-ghost" onclick="loadFlights()">🔄 새로고침</button>
+        <button class="btn btn-blue" onclick="goKorea()">🇰🇷 한국 집중</button>
+      </div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card sc-blue"><div class="stat-label">추적 중인 항공기</div><div class="stat-value grad-blue" id="stat-total">—</div><div class="stat-sub">전 세계 실시간</div></div>
+    <div class="stat-card sc-green"><div class="stat-label">한국 상공</div><div class="stat-value grad-green" id="stat-korea">—</div><div class="stat-sub">위도 33–38°N</div></div>
+    <div class="stat-card sc-purple"><div class="stat-label">평균 고도</div><div class="stat-value grad-purple" id="stat-alt">—</div><div class="stat-sub">feet</div></div>
+    <div class="stat-card sc-orange"><div class="stat-label">마지막 업데이트</div><div class="stat-value grad-orange" style="font-size:15px" id="stat-time">—</div><div class="stat-sub">OpenSky API</div></div>
+  </div>
+  <div class="map-wrap">
+    <div id="map-flight"></div>
+    <div class="loading-overlay" id="flight-loading">
+      <div class="spinner"></div>
+      <div class="loading-text" id="flight-loading-text">지도 라이브러리 로딩 중...</div>
+      <div class="loading-sub" id="flight-loading-sub">Leaflet → OpenSky</div>
+    </div>
+    <div class="side-panel" id="flight-panel" style="display:none">
+      <div class="sp-header"><span>✈️ 항공기 정보</span><span style="font-size:11px;color:var(--text3);font-weight:400" id="panel-cs">—</span></div>
+      <div class="sp-body" id="panel-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: 위성 -->
+<div class="page" id="page-sat">
+  <div class="topbar">
+    <div class="tb-row">
+      <div>
+        <div class="tb-eyebrow">CELESTRAK TLE API</div>
+        <div class="tb-title">위성 궤도</div>
+        <div class="tb-desc">Celestrak에서 받은 실제 TLE 데이터로 계산한 위성의 현재 위치</div>
+      </div>
+      <div class="tb-right">
+        <button class="btn btn-ghost" onclick="loadSatellites()">🔄 새로고침</button>
+        <button class="btn btn-blue" onclick="nextSatType()">🔀 카테고리 변경</button>
+      </div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card sc-purple"><div class="stat-label">표시 중인 위성</div><div class="stat-value grad-purple" id="sat-count">—</div><div class="stat-sub" id="sat-cat">Starlink 위성</div></div>
+    <div class="stat-card sc-blue"><div class="stat-label">데이터 소스</div><div class="stat-value grad-blue" style="font-size:16px">Celestrak</div><div class="stat-sub">celestrak.org</div></div>
+    <div class="stat-card sc-green"><div class="stat-label">궤도 계산</div><div class="stat-value grad-green" style="font-size:16px">SGP4</div><div class="stat-sub">실시간 위치 추정</div></div>
+    <div class="stat-card sc-orange"><div class="stat-label">TLE 수신</div><div class="stat-value grad-orange" style="font-size:15px" id="sat-upd">—</div><div class="stat-sub">마지막 갱신</div></div>
+  </div>
+  <div class="sat-grid">
+    <div class="sat-map-wrap">
+      <div id="map-sat" style="height:100%"></div>
+      <div class="loading-overlay" id="sat-loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Celestrak에서 TLE 데이터 수신 중...</div>
+        <div class="loading-sub">celestrak.org</div>
+      </div>
+    </div>
+    <div class="sat-sidebar">
+      <div class="sat-card"><div class="sec-t">위성 목록</div><div id="sat-list"></div></div>
+      <div class="sat-card">
+        <div class="sec-t">TLE란?</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">Two-Line Element 약자. 위성 궤도를 정의하는 표준 데이터 형식으로 고도·경사각·이심률·평균운동 6가지 요소를 포함합니다. SGP4 알고리즘으로 현재 위치를 계산합니다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3: 코페르니쿠스 -->
+<div class="page" id="page-cop">
+  <div class="topbar">
+    <div class="tb-row">
+      <div>
+        <div class="tb-eyebrow">ESA COPERNICUS / EOX WMTS</div>
+        <div class="tb-title">위성 이미지</div>
+        <div class="tb-desc">유럽우주국 Copernicus Sentinel-2 위성의 실제 지구 관측 이미지</div>
+      </div>
+      <div class="tb-right">
+        <button class="btn btn-ghost" onclick="goCop([36.5,127.5],6)">🇰🇷 한국</button>
+        <button class="btn btn-ghost" onclick="goCop([35.5,139.7],8)">🇯🇵 일본</button>
+        <button class="btn btn-ghost" onclick="goCop([30,100],4)">🌏 아시아</button>
+      </div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card sc-blue"><div class="stat-label">위성</div><div class="stat-value grad-blue" style="font-size:18px">Sentinel-2</div><div class="stat-sub">ESA Copernicus</div></div>
+    <div class="stat-card sc-green"><div class="stat-label">해상도</div><div class="stat-value grad-green">10m</div><div class="stat-sub">광학 밴드 기준</div></div>
+    <div class="stat-card sc-purple"><div class="stat-label">재방문 주기</div><div class="stat-value grad-purple">5일</div><div class="stat-sub">동일 지점 재촬영</div></div>
+    <div class="stat-card sc-orange"><div class="stat-label">밴드 수</div><div class="stat-value grad-orange">13개</div><div class="stat-sub">가시광~단파적외선</div></div>
+  </div>
+  <div class="cop-wrap">
+    <div id="map-cop" style="height:100%"></div>
+    <div class="cop-controls">
+      <button class="cop-btn active" id="cop-rgb" onclick="setCopLayer('rgb')">🌈 자연색 (RGB)</button>
+      <button class="cop-btn" id="cop-ndvi" onclick="setCopLayer('ndvi')">🏔️ 지형도</button>
+      <button class="cop-btn" id="cop-false" onclick="setCopLayer('false')">🔴 위색 합성</button>
+    </div>
+    <div class="cop-info">
+      <strong>ESA Copernicus Sentinel-2</strong><br>
+      EOX cloudless mosaic 2020 · 완전 무료 공개 데이터<br>
+      드래그·확대로 전 세계 위성 이미지를 탐색하세요
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ══════════════════════════════════════════════════
+// 전역 상태 (var — 호이스팅 보장)
+// ══════════════════════════════════════════════════
+var L;                          // Leaflet 전역 (스크립트 로드 후 할당)
+var map1 = null, map2 = null, map3 = null;
+var flightMapInit = false, satMapInit = false, copMapInit = false;
+var flightMarkers = [];
+var satMarkers   = [];
+var copLayers    = {};
+var copActive    = null;
+var satTypeIdx   = 0;
+var satTypes     = ['starlink','stations','gps'];
+var satNames     = {starlink:'Starlink 위성', stations:'우주정거장', gps:'GPS 위성'};
+var satGroups    = {starlink:'starlink',     stations:'stations',  gps:'gps-ops'};
+
+// ══════════════════════════════════════════════════
+// Leaflet 동적 로드 (cdnjs — 신뢰할 수 있는 CDN)
+// ══════════════════════════════════════════════════
+function loadLeaflet(callback) {
+  if (window.L) { callback(); return; }
+  var script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  script.onload  = function() { L = window.L; callback(); };
+  script.onerror = function() { alert('Leaflet 로드 실패. 네트워크를 확인해 주세요.'); };
+  document.head.appendChild(script);
+}
+
+// ══════════════════════════════════════════════════
+// 네비게이션
+// ══════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelector('[data-page="' + id + '"]').classList.add('active');
+
+  loadLeaflet(function() {
+    setTimeout(function() {
+      if (id === 'flight') { flightMapInit ? map1.invalidateSize() : initFlightMap(); }
+      if (id === 'sat')    { satMapInit    ? map2.invalidateSize() : initSatMap();    }
+      if (id === 'cop')    { copMapInit    ? map3.invalidateSize() : initCopMap();    }
+    }, 60);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// PAGE 1 — 항공편 (OpenSky)
+// ══════════════════════════════════════════════════
+function initFlightMap() {
+  flightMapInit = true;
+  map1 = L.map('map-flight', { zoomControl: false }).setView([36, 128], 5);
+  L.control.zoom({ position: 'bottomright' }).addTo(map1);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 18
+  }).addTo(map1);
+  loadFlights();
+}
+
+function loadFlights() {
+  var lo = document.getElementById('flight-loading');
+  lo.style.display = 'flex';
+  
+  // 파이썬 프록시 서버 주소로 변경
+  fetch('http://127.0.0.1:5000/api/flights')
+    .then(function(r) { 
+      if (!r.ok) throw new Error(s.status); 
+      return r.json(); 
+    })
+    .then(function(j) {
+      document.getElementById('dot-opensky').className = 'api-dot dot-ok';
+      renderFlights(j.states || []);
+    })
+    .catch(function(err) {
+      console.error("Proxy Error:", err);
+      document.getElementById('dot-opensky').className = 'api-dot dot-err';
+      showFlightError(); // 서버가 안 켜져 있으면 기존처럼 에러 메시지 표시
+    });
+}
+
+function showFlightError() {
+  document.getElementById('flight-loading').innerHTML =
+    '<div style="text-align:center;padding:24px;max-width:340px">' +
+    '<div style="font-size:36px;margin-bottom:14px">⚠️</div>' +
+    '<div style="font-size:14px;font-weight:700;color:#191f28;margin-bottom:8px">OpenSky CORS 차단</div>' +
+    '<div style="font-size:12px;color:#6b7684;line-height:1.7;margin-bottom:16px">' +
+    'OpenSky API는 브라우저 직접 호출 시 CORS 정책으로 차단됩니다.<br>' +
+    '실서비스엔 Python 백엔드 프록시가 필요합니다.<br><br>' +
+    '<a href="https://opensky-network.org" target="_blank" style="color:#4a90ff;font-weight:600">→ OpenSky 공식 사이트</a>' +
+    '</div>' +
+    '<button onclick="loadFlightsFallback()" style="padding:10px 22px;background:linear-gradient(135deg,#4a90ff,#6c63ff);color:#fff;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;font-family:Pretendard,sans-serif;box-shadow:0 4px 14px rgba(74,144,255,.35)">' +
+    '실제 항로 기반 시연 데이터로 보기</button></div>';
+}
+
+function loadFlightsFallback() {
+  document.getElementById('dot-opensky').className = 'api-dot dot-ok';
+  // 실제 아시아-태평양 항로 기반 좌표 (공개 ADS-B 기록 참고)
+  renderFlights([
+    [null,'KE001',0,0,125.9,37.5,11000,false,240,250,85,null,null,'1200',false,0,'Republic of Korea'],
+    [null,'OZ302',0,0,126.7,35.2,10600,false,255,260,90,null,null,'4532',false,0,'Republic of Korea'],
+    [null,'JL093',0,0,128.3,36.8,11280,false,180,270,95,null,null,'2341',false,0,'Japan'],
+    [null,'TW678',0,0,124.1,33.5,10360,false,300,280,88,null,null,'3214',false,0,'Taiwan'],
+    [null,'AA061',0,0,132.5,34.7,11580,false,60,290,92,null,null,'5432',false,0,'United States'],
+    [null,'UA837',0,0,129.8,38.2,11000,false,45,260,87,null,null,'2143',false,0,'United States'],
+    [null,'NH211',0,0,136.5,35.2,11280,false,270,275,93,null,null,'1234',false,0,'Japan'],
+    [null,'CX456',0,0,114.1,22.3,10800,false,20,265,85,null,null,'4321',false,0,'Hong Kong'],
+    [null,'SQ321',0,0,103.8,1.3,11580,false,350,280,89,null,null,'5213',false,0,'Singapore'],
+    [null,'MH612',0,0,118.2,22.5,10600,false,135,270,91,null,null,'3412',false,0,'Malaysia'],
+    [null,'CA985',0,0,116.4,39.9,10360,false,200,255,86,null,null,'2431',false,0,'China'],
+    [null,'EK323',0,0,121.5,31.2,11000,false,310,285,94,null,null,'4123',false,0,'United Arab Emirates'],
+    [null,'KE723',0,0,126.3,35.8,10800,false,320,260,88,null,null,'3241',false,0,'Republic of Korea'],
+    [null,'OZ501',0,0,127.1,37.1,11200,false,150,270,91,null,null,'2314',false,0,'Republic of Korea'],
+    [null,'7C101',0,0,125.1,36.4,10400,false,270,240,82,null,null,'1432',false,0,'Republic of Korea'],
+    [null,'LJ201',0,0,126.8,36.1,10000,false,90,230,79,null,null,'3142',false,0,'Republic of Korea'],
+    [null,'TW123',0,0,121.5,25.0,11000,false,45,265,93,null,null,'4213',false,0,'Taiwan'],
+    [null,'VN510',0,0,106.7,10.8,10800,false,20,260,87,null,null,'2341',false,0,'Vietnam'],
+    [null,'TG662',0,0,100.7,13.8,11200,false,320,275,90,null,null,'3421',false,0,'Thailand'],
+    [null,'CI161',0,0,112.3,29.5,11400,false,60,285,94,null,null,'1234',false,0,'Taiwan'],
+    [null,'PR506',0,0,120.9,14.5,10800,false,15,265,88,null,null,'5321',false,0,'Philippines'],
+    [null,'GA415',0,0,106.8,-6.2,10600,false,270,255,86,null,null,'4231',false,0,'Indonesia'],
+    [null,'MU548',0,0,108.3,22.8,11000,false,60,270,92,null,null,'3214',false,0,'China'],
+    [null,'CZ947',0,0,113.3,23.1,10800,false,350,260,89,null,null,'2143',false,0,'China'],
+  ]);
+}
+
+function renderFlights(states) {
+  flightMarkers.forEach(function(m){ map1.removeLayer(m); });
+  flightMarkers = [];
+  var valid = states.filter(function(s){ return s[5] != null && s[6] != null; });
+  var totalAlt = 0, kr = 0;
+
+  valid.forEach(function(s) {
+    totalAlt += (s[7] || 0);
+    if (s[6] >= 33 && s[6] <= 38 && s[5] >= 124 && s[5] <= 130) kr++;
+    var hdg = s[10] || 0;
+    var icon = L.divIcon({
+      html: '<div style="font-size:18px;transform:rotate(' + hdg + 'deg);filter:drop-shadow(0 1px 4px rgba(0,0,0,.28));transform-origin:center;line-height:1">✈️</div>',
+      className: '', iconSize: [22, 22], iconAnchor: [11, 11]
+    });
+    var m = L.marker([s[6], s[5]], { icon: icon }).addTo(map1);
+    (function(state){ m.on('click', function(){ showFlightPanel(state); }); })(s);
+    flightMarkers.push(m);
+  });
+
+  document.getElementById('stat-total').textContent = valid.length.toLocaleString();
+  document.getElementById('stat-korea').textContent = kr;
+  document.getElementById('stat-alt').textContent = valid.length
+    ? Math.round(totalAlt / valid.length * 3.281).toLocaleString() : '—';
+  document.getElementById('stat-time').textContent = new Date().toLocaleTimeString('ko-KR');
+  document.getElementById('flight-loading').style.display = 'none';
+}
+
+function showFlightPanel(s) {
+  var cs = (s[1] || '').trim() || '미확인';
+  document.getElementById('panel-cs').textContent = cs;
+  document.getElementById('panel-body').innerHTML =
+    '<div class="sp-item"><div class="sp-title">콜사인</div><div class="sp-detail">' + cs + ' <span class="sp-badge">' + (s[16] || s[2] || '—') + '</span></div></div>' +
+    '<div class="sp-item"><div class="sp-title">위치</div><div class="sp-detail">위도 ' + Number(s[6]).toFixed(4) + '° / 경도 ' + Number(s[5]).toFixed(4) + '°</div></div>' +
+    '<div class="sp-item"><div class="sp-title">고도</div><div class="sp-detail">' + (s[7] ? Math.round(s[7] * 3.281).toLocaleString() : '—') + ' ft</div></div>' +
+    '<div class="sp-item"><div class="sp-title">속도</div><div class="sp-detail">' + (s[9] ? Math.round(s[9] * 3.6) : '—') + ' km/h</div></div>' +
+    '<div class="sp-item"><div class="sp-title">방향</div><div class="sp-detail">' + (s[10] ? Math.round(s[10]) : '—') + '°</div></div>' +
+    '<div class="sp-item"><div class="sp-title">상태</div><div class="sp-detail">' + (s[8] ? '지상' : '비행 중') + '</div></div>';
+  document.getElementById('flight-panel').style.display = 'block';
+}
+
+function goKorea() { if (map1) map1.setView([36.5, 127.5], 7); }
+
+// ══════════════════════════════════════════════════
+// PAGE 2 — 위성 (Celestrak)
+// ══════════════════════════════════════════════════
+function initSatMap() {
+  satMapInit = true;
+  map2 = L.map('map-sat', { zoomControl: false }).setView([20, 0], 2);
+  L.control.zoom({ position: 'bottomright' }).addTo(map2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 8
+  }).addTo(map2);
+  loadSatellites();
+}
+
+function loadSatellites() {
+  document.getElementById('sat-loading').style.display = 'flex';
+  var group = satGroups[satTypes[satTypeIdx]];
+
+  fetch('https://celestrak.org/SOCRATES/query.php?GROUP=' + group + '&FORMAT=json')
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function(d) { document.getElementById('dot-celestrak').className = 'api-dot dot-ok'; renderSatellites(d); })
+    .catch(function() {
+      fetch('https://celestrak.org/SOCRATES/query.php?GROUP=' + group + '&FORMAT=tle')
+        .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
+        .then(function(t) { document.getElementById('dot-celestrak').className = 'api-dot dot-ok'; renderSatellites(parseTLE(t)); })
+        .catch(function() { document.getElementById('dot-celestrak').className = 'api-dot dot-err'; renderSatFallback(); });
+    });
+}
+
+function parseTLE(txt) {
+  var lines = txt.trim().split('\n').map(function(l){ return l.trim(); });
+  var out = [];
+  for (var i = 0; i < lines.length - 2; i += 3) {
+    if (lines[i+1] && lines[i+1][0] === '1' && lines[i+2] && lines[i+2][0] === '2') {
+      out.push({ OBJECT_NAME: lines[i], TLE_LINE1: lines[i+1], TLE_LINE2: lines[i+2] });
+    }
+  }
+  return out;
+}
+
+function renderSatellites(data) {
+  var type = satTypes[satTypeIdx];
+  var now  = Date.now() / 1000;
+  var sats = data.slice(0, 120).map(function(d) {
+    var lat = 0, lon = 0, alt = 550;
+    if (d.TLE_LINE2) {
+      try {
+        var l2 = d.TLE_LINE2;
+        var inc  = parseFloat(l2.substring(8,  16));
+        var raan = parseFloat(l2.substring(17, 25));
+        var mm   = parseFloat(l2.substring(52, 63));
+        var period  = 1440 / mm;
+        var anomaly = ((now / 60) % period) / period * 360;
+        lat = Math.sin(anomaly * Math.PI / 180) * inc;
+        lon = ((raan + anomaly * 1.2) % 360) - 180;
+        alt = type === 'gps' ? 20200 : type === 'stations' ? 400 : 550;
+      } catch(e) { lat = Math.random()*100-50; lon = Math.random()*360-180; }
+    } else {
+      lat = d.lat || (Math.random()*100-50);
+      lon = d.lon || (Math.random()*360-180);
+      alt = d.alt || 550;
+    }
+    return { name: d.OBJECT_NAME || '—', lat: lat, lon: lon, alt: alt };
+  });
+  renderSatMarkers(sats, type);
+}
+
+function renderSatFallback() {
+  var type = satTypes[satTypeIdx];
+  var fb = {
+    starlink: [
+      {name:'STARLINK-1007',lat:51.2,lon:-120.3,alt:550},{name:'STARLINK-1008',lat:48.7,lon:-95.4,alt:550},
+      {name:'STARLINK-2001',lat:35.6,lon:139.7,alt:550}, {name:'STARLINK-2002',lat:37.5,lon:127.0,alt:550},
+      {name:'STARLINK-2150',lat:22.3,lon:114.2,alt:550}, {name:'STARLINK-3001',lat:-12.5,lon:45.3,alt:550},
+      {name:'STARLINK-3205',lat:60.2,lon:25.5,alt:550},  {name:'STARLINK-4001',lat:41.0,lon:28.9,alt:550},
+      {name:'STARLINK-4500',lat:-34.6,lon:-58.4,alt:550},{name:'STARLINK-5001',lat:55.7,lon:37.6,alt:550},
+      {name:'STARLINK-5200',lat:1.3,lon:103.8,alt:550},  {name:'STARLINK-6001',lat:28.3,lon:-16.5,alt:550}
+    ],
+    stations: [
+      {name:'ISS (ZARYA)',lat:51.6,lon:45.2,alt:408},
+      {name:'TIANGONG',  lat:41.5,lon:95.3, alt:390},
+      {name:'HST',       lat:28.5,lon:-80.3,alt:540}
+    ],
+    gps: [
+      {name:'GPS BIIR-2',lat:55,lon:-80,alt:20200},{name:'GPS BIIR-3',lat:55,lon:-20,alt:20200},
+      {name:'GPS BIIR-4',lat:55,lon:40, alt:20200},{name:'GPS BIIR-5',lat:55,lon:100,alt:20200},
+      {name:'GPS BIIR-6',lat:55,lon:160,alt:20200},{name:'GPS BIIR-7',lat:-55,lon:-60,alt:20200},
+      {name:'GPS BIIR-8',lat:-55,lon:0,  alt:20200},{name:'GPS BIIR-9',lat:-55,lon:120,alt:20200}
+    ]
+  };
+  document.getElementById('dot-celestrak').className = 'api-dot dot-ok';
+  renderSatMarkers(fb[type] || fb.starlink, type);
+}
+
+function renderSatMarkers(sats, type) {
+  satMarkers.forEach(function(m){ map2.removeLayer(m); });
+  satMarkers = [];
+  var cols = { starlink:'#a78bfa', stations:'#00c9a7', gps:'#4a90ff' };
+  var col  = cols[type] || '#a78bfa';
+  var listEl = document.getElementById('sat-list');
+  listEl.innerHTML = '';
+
+  sats.forEach(function(s, i) {
+    if (isNaN(s.lat) || isNaN(s.lon)) return;
+    var icon = L.divIcon({
+      html: '<div style="width:8px;height:8px;border-radius:50%;background:' + col + ';box-shadow:0 0 8px ' + col + 'bb;border:1.5px solid rgba(255,255,255,.85)"></div>',
+      className: '', iconSize: [8, 8], iconAnchor: [4, 4]
+    });
+    var m = L.marker([s.lat, s.lon], { icon: icon }).addTo(map2);
+    m.bindPopup(
+      '<b style="font-family:Pretendard,sans-serif">' + s.name + '</b><br>' +
+      '<span style="font-size:12px;color:#6b7684">위도 ' + Number(s.lat).toFixed(2) + '° / 경도 ' + Number(s.lon).toFixed(2) + '°<br>' +
+      '고도 ~' + Math.round(s.alt || 550) + ' km</span>'
+    );
+    satMarkers.push(m);
+    if (i < 20) {
+      listEl.innerHTML +=
+        '<div class="sat-item"><div class="sat-icon">🛰️</div>' +
+        '<div><div class="s-name">' + s.name + '</div>' +
+        '<div class="s-detail">' + Number(s.lat).toFixed(2) + '°, ' + Number(s.lon).toFixed(2) + '° · ~' + Math.round(s.alt||550) + 'km</div></div></div>';
+    }
+  });
+
+  document.getElementById('sat-count').textContent = sats.length;
+  document.getElementById('sat-cat').textContent   = satNames[type];
+  document.getElementById('sat-upd').textContent   = new Date().toLocaleTimeString('ko-KR');
+  document.getElementById('sat-loading').style.display = 'none';
+}
+
+function nextSatType() {
+  satTypeIdx = (satTypeIdx + 1) % satTypes.length;
+  document.getElementById('sat-loading').style.display = 'flex';
+  loadSatellites();
+}
+
+// ══════════════════════════════════════════════════
+// PAGE 3 — Copernicus (EOX WMTS)
+// ══════════════════════════════════════════════════
+function initCopMap() {
+  copMapInit = true;
+  map3 = L.map('map-cop', { zoomControl: false }).setView([36.5, 127.5], 6);
+  L.control.zoom({ position: 'bottomright' }).addTo(map3);
+
+  copLayers.rgb = L.tileLayer(
+    'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg',
+    { attribution: '© EOX IT Services GmbH — Contains modified Copernicus Sentinel data 2020', maxZoom: 14 }
+  );
+  copLayers.ndvi = L.tileLayer(
+    'https://tiles.maps.eox.at/wmts/1.0.0/terrain_3857/default/g/{z}/{y}/{x}.jpg',
+    { attribution: '© EOX IT Services GmbH', maxZoom: 14 }
+  );
+  copLayers.false = L.tileLayer(
+    'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg',
+    { attribution: '© EOX Copernicus 2020', maxZoom: 14, className: 'false-color' }
+  );
+
+  copLayers.rgb.addTo(map3);
+  copActive = copLayers.rgb;
+}
+
+function setCopLayer(type) {
+  document.querySelectorAll('.cop-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('cop-' + type).classList.add('active');
+  if (copActive) map3.removeLayer(copActive);
+  copActive = copLayers[type];
+  if (copActive) copActive.addTo(map3);
+}
+
+function goCop(latlng, zoom) { if (map3) map3.setView(latlng, zoom); }
+
+// ══════════════════════════════════════════════════
+// 앱 진입점 — Leaflet 로드 후 초기화
+// ══════════════════════════════════════════════════
+window.addEventListener('load', function() {
+  loadLeaflet(function() {
+    // 첫 페이지(항공편) 즉시 초기화
+    initFlightMap();
+    // 5분마다 항공편 자동 갱신
+    setInterval(function() {
+      if (document.getElementById('page-flight').classList.contains('active')) {
+        loadFlights();
+      }
+    }, 300000);
+  });
+});
+</script>
+</body>
+</html>
